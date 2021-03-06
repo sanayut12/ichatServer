@@ -1,7 +1,6 @@
 const express = require('express');
 var firebase = require("firebase-admin");
 const random = require('random');
-var bodyParser = require('body-parser');
 var port = process.env.PORT || 3000
 //config express
 const app = express();
@@ -12,9 +11,6 @@ app.use((req, res, next) => {
     return next();
  });
 
-
-app.use(bodyParser.json()); // support json encoded bodies
-app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 app.use(express.static('public'));
 app.use(express.json());
 //config firebase 
@@ -27,6 +23,9 @@ firebase.initializeApp({
 var database = firebase.database();
 var storage = firebase.storage().bucket();
 //..........http register..................
+app.get('/',function(req,res){
+    res.send('Hello welcome from i chat server')
+})
 app.post('/register',async function(req,res){
     var body = {
         username : req.body.username,
@@ -56,15 +55,6 @@ app.post('/login',async function(req,res){
     };
     var status = await firebaseLogin(body);
     res.send(status);
-});
-
-app.get('/image/:id',function(req,res){
-    var body = {
-        id : req.params.id
-    };
-    console.log(body);
-    var image = firebaseUrlImage(body.id);
-    res.send("https://firebasestorage.googleapis.com/v0/b/ichatdatabase.appspot.com/o/background.jpg?alt=media&token=bebfcba0-3988-459f-8b94-5eadfb95bc5a");
 });
 
 //method use  user search for add friend
@@ -99,9 +89,6 @@ app.post('/confirmfriend',async function(req,res){
     res.send(true);
 });
 
-// app.post('/unfriend',function(req,res){
-
-// })
 
 app.post('/unwait',async function(req,res){
     var body = {
