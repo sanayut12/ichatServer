@@ -17,8 +17,8 @@ app.use(express.json());
 var serviceAccount = require("./serviceFirebase.json");
 firebase.initializeApp({
   credential: firebase.credential.cert(serviceAccount),
-  databaseURL: "https://ichatdatabase-default-rtdb.firebaseio.com",
-  storageBucket: "gs://ichatdatabase.appspot.com/"
+  databaseURL: "https://ichatdatabase-28430-default-rtdb.firebaseio.com/",
+  storageBucket: "gs://ichatdatabase-28430.appspot.com/"
 });
 var database = firebase.database();
 var storage = firebase.storage().bucket();
