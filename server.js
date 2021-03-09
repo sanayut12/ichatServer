@@ -22,6 +22,7 @@ firebase.initializeApp({
 });
 var database = firebase.database();
 var storage = firebase.storage().bucket();
+var auth  =firebase.auth()
 //..........http register..................
 app.get('/',function(req,res){
     res.send('Hello welcome from i chat server')
@@ -35,8 +36,15 @@ app.post('/register',async function(req,res){
         url : "https://firebasestorage.googleapis.com/v0/b/ichatdatabase.appspot.com/o/background.jpg?alt=media&token=bebfcba0-3988-459f-8b94-5eadfb95bc5a"
     };
 
-    var status = await firebaseCheckUser(body);   //return trye or false   use check user duoble
+    var uid = await auth.createUser({
+        email : body.email
+    }).then((res)=>{
+        return res.uid
+    })
     
+    body["uid"] = uid
+    var status = await firebaseCheckUser(body);   //return trye or false   use check user duoble
+    console.log(body)
     if(status)
     {   
         firebaseRegister(randomID(),body); //if no user bouble will be set data to database
@@ -141,6 +149,7 @@ function sleep(ms) {
 
 function firebaseRegister(ID,body) {
     database.ref('users/' + ID).set({
+        uid : body.uid,
         username: body.username,
         password:body.password,
         email: body.email,
