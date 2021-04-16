@@ -1,7 +1,10 @@
 const express = require('express');
 var firebase = require("firebase-admin");
 const random = require('random');
+var fs = require('fs')
+const { uuid } = require('uuidv4');
 var port = process.env.PORT || 3000
+
 //config express
 const app = express();
 app.use((req, res, next) => {
@@ -115,10 +118,65 @@ app.post('/friendMe',async function(req,res){
     };
     console.log(body);
     var list_friend = await friendMe(body.ID);
+
+    console.log("list friend"+list_friend)
     var friend =await friendMeInfo(list_friend);
     res.send(friend);
     ///
 });
+
+app.post('/postFeed',async function(req,res){
+    var id_post = randomID()
+    var imageName = randomID()+'.png'
+    var date = Date.now()
+
+    var body = {
+        image :  req.body.image, //base64 
+        id_post : id_post,
+        ID : req.body.ID,
+        message : req.body.message,
+        imageName : imageName,
+        date : date
+    }
+    // console.log(body)
+    
+    await firebasePostFeed(body)
+    res.send({message :"hello123"})
+
+})
+
+app.post('/changeimageProfile',async function(req,res){
+    var imageName = randomID()+'.png'
+
+
+    var body = {
+        image :  req.body.image, //base64 
+        ID : req.body.ID,
+        imageName : imageName,
+    }
+    console.log(body)
+    var img =  await changeImageProfile(body)
+    // console.log(body)
+    res.send({image :img})
+
+})
+
+app.post('/feed',async function(req,res){
+    var body = {
+        ID : req.body.ID
+    }
+    var list_friend = await friendMe(body.ID);
+    list_friend.push(body.ID)
+    // console.log(list_friend)
+    var postDetail = await feedFriend(list_friend)
+    // console.log(postDetail)
+    var feedlast = sortFeed(postDetail)
+    console.log("feed ")
+    console.log(feedlast)
+    res.send({
+        message : feedlast
+    })
+})
 // friendOperator(ID_friend,status)
 app.listen(port,()=>{
 console.log("http://localhost:"+port);
@@ -159,6 +217,81 @@ function firebaseRegister(ID,body) {
         background : "none",
         url_background : "https://firebasestorage.googleapis.com/v0/b/ichatdatabase.appspot.com/o/background.jpg?alt=media&token=bebfcba0-3988-459f-8b94-5eadfb95bc5a"
     });
+
+    database.ref('post/' + ID).set({
+        9999999999 : "none"
+    })
+}
+function sortFeed(list){
+    var len = list.length
+    console.log(" sort function :"+len)
+    for (let i = 0;i<len-1;i++){
+        console.log("i : " +i)
+        for (let k = 0;k<len-1;k++){
+            console.log("K" + k)
+            if (list[k]["date"] < list[k+1]["date"]){
+                console.log( list[k]["date"] +" : "+list[k+1]["date"])
+                var buff = list[k] 
+                list[k] = list[k+1]
+                list[k+1] = buff
+            } 
+            
+        } 
+
+    }
+    // console.log(list)
+
+    return list
+}
+
+async function firebasePostFeed(body) {
+    await fs.writeFileSync(body.imageName,body.image,{encoding: 'base64'})
+
+    var token = await storage.upload(body.imageName,{
+        metadata: {
+            contentType: 'image/png',
+            metadata: {
+              firebaseStorageDownloadTokens: uuid()
+            }
+          }
+    }).then(function(res){
+        return res[1]['metadata']['firebaseStorageDownloadTokens']
+        })
+    var urlimage = "https://firebasestorage.googleapis.com/v0/b/ichatdatabase-28430.appspot.com/o/"+body.imageName+"?alt=media&token="+token;
+    console.log(urlimage)
+
+    database.ref('/post/'+body.ID+'/'+body.id_post).set({
+        message : body.message,
+        url : urlimage,
+        date : body.date
+    })
+
+    fs.unlinkSync(body.imageName)
+}
+
+async function changeImageProfile(body) {
+
+    await fs.writeFileSync(body.imageName,body.image,{encoding: 'base64'})
+
+    var token = await storage.upload(body.imageName,{
+        metadata: {
+            contentType: 'image/png',
+            metadata: {
+              firebaseStorageDownloadTokens: uuid()
+            }
+          }
+    }).then(function(res){
+        return res[1]['metadata']['firebaseStorageDownloadTokens']
+        })
+    var urlimage = "https://firebasestorage.googleapis.com/v0/b/ichatdatabase-28430.appspot.com/o/"+body.imageName+"?alt=media&token="+token;
+    // console.log(urlimage)
+
+    database.ref('/users/'+body.ID).update({
+        url_image : urlimage,
+    })
+
+    fs.unlinkSync(body.imageName)
+    return urlimage
 }
 
 function firebaseCheckUser(body){
@@ -198,13 +331,15 @@ async function firebaseUrlImage(name){
     storage.file('background.jpg').get().then(res =>{
         var name = res[1]['name'];
         var token = res[1]['metadata']['firebaseStorageDownloadTokens'];
-        var url = "https://firebasestorage.googleapis.com/v0/b/ichatdatabase.appspot.com/o/"+name+"?alt=media&token="+token;
+        var url = "https://firebasestorage.googleapis.com/v0/b/ichatdatabase-28430.appspot.com/o/"+name+"?alt=media&token="+token;
         return url;
       });
 }
 
 async function firebaseAddfriend(ID,body){
+    
     database.ref('friend/'+ID).set(body);
+    
 }
 
 async function firebaseFriend(ID_user){
@@ -299,8 +434,50 @@ async function friendMe(ID){
     });
     return friend;
 }
+async function feedFriend(list){
+    var buffer = []
+
+    for(let key of list){
+        // console.log(key);
+        var friend = await database.ref('/users/'+key).get().then((res)=>{
+            var data = res.val()
+            data["ID_user"] = key
+            delete data['password']
+            delete data['image']
+            delete data['background']
+            delete data['email']
+            delete data['uid']
+            delete data['url_background']
+            delete data['message_box']
+            return data
+        });
+        await database.ref('/post/'+key).get().then((res)=>{
+            var buffer2 = []
+            var data2 = res.val()
+            delete data2['9999999999']
+            for (let k in data2){
+                // console.log(k)
+                data2[k]['ID_post'] = k
+                data2[k]['ID_user'] = key
+                data2[k]['image_profile'] = friend['url_image']
+                data2[k]["name"] = friend['username']
+                buffer2.push(data2[k])
+            }
+            
+            for (let item of buffer2){
+                buffer.push(item)
+            }
+            
+        })
+    }
+    // console.log(buffer)
+    return buffer;
+}
 
 async function friendMeInfo(list_firend){
+    if (list_firend == null){
+        return []
+    }
     var buffer = [];
     for(let key of list_firend){
         console.log(key);
