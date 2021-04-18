@@ -161,6 +161,22 @@ app.post('/changeimageProfile',async function(req,res){
 
 })
 
+app.post('/changeimagebacbground',async function(req,res){
+    var imageName = randomID()+'.png'
+
+
+    var body = {
+        image :  req.body.image, //base64 
+        ID : req.body.ID,
+        imageName : imageName,
+    }
+    console.log(body)
+    var img =  await changeImageBackground(body)
+    // console.log(body)
+    res.send({imagebackground :img})
+
+})
+
 app.post('/feed',async function(req,res){
     var body = {
         ID : req.body.ID
@@ -288,6 +304,31 @@ async function changeImageProfile(body) {
 
     database.ref('/users/'+body.ID).update({
         url_image : urlimage,
+    })
+
+    fs.unlinkSync(body.imageName)
+    return urlimage
+}
+
+async function changeImageBackground(body) {
+
+    await fs.writeFileSync(body.imageName,body.image,{encoding: 'base64'})
+
+    var token = await storage.upload(body.imageName,{
+        metadata: {
+            contentType: 'image/png',
+            metadata: {
+              firebaseStorageDownloadTokens: uuid()
+            }
+          }
+    }).then(function(res){
+        return res[1]['metadata']['firebaseStorageDownloadTokens']
+        })
+    var urlimage = "https://firebasestorage.googleapis.com/v0/b/ichatdatabase-28430.appspot.com/o/"+body.imageName+"?alt=media&token="+token;
+    // console.log(urlimage)
+
+    database.ref('/users/'+body.ID).update({
+        url_background : urlimage,
     })
 
     fs.unlinkSync(body.imageName)
