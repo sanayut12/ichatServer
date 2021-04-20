@@ -174,7 +174,6 @@ app.post('/changeimagebacbground',async function(req,res){
     var img =  await changeImageBackground(body)
     // console.log(body)
     res.send({imagebackground :img})
-
 })
 
 app.post('/feed',async function(req,res){
@@ -193,6 +192,44 @@ app.post('/feed',async function(req,res){
         message : feedlast
     })
 })
+
+app.post('/commentpost',async (req,res)=>{
+    var body = {
+        id_post : req.body.id_post,
+        ID_userComment : req.body.ID_userComment,
+        name : req.body.name,
+        image_profile : req.body.image_profile ,
+        message : req.body.message
+    }
+    console.log(body)
+    await CommentPost(body)
+    res.send({
+        message : "hello"
+    })
+})
+
+app.post('/getcommentpost',async (req,res)=>{
+    var body = {
+        id_post : req.body.id_post,
+    }
+    var data = await getCommentPost(body)
+    res.send({
+        data : data
+    })
+})
+
+app.post('/love',async (req,res)=>{
+    var body = {
+        ID : req.body.ID,
+        id_post : req.body.id_post 
+    }
+
+    var data = await lovepost(body)
+    res.send({
+        status : data
+    })
+})
+
 // friendOperator(ID_friend,status)
 app.listen(port,()=>{
 console.log("http://localhost:"+port);
@@ -215,11 +252,63 @@ function randomID(){
 
     return String(r0)+String(r1)+String(r2)+String(r3)+String(r4)+String(r5)+String(r6)+String(r7)+String(r8)+String(r9);
 }
+
+async function lovepost(body){
+    database.ref('lovePost/'+body.id_post).get().then((res)=>{
+        let data  = res.val()
+        var loveCount = data.length
+        if (data == null){
+            database.ref('lovePost/'+body.id_post).push({
+                ID : body.ID
+            })
+            return loveCount
+        } else{
+            for (let i in data){
+                if (data[i]==body.ID){
+                    database.ref('lovePost/'+body.id_post+'/'+i).remove()
+                    return loveCount-1
+                }
+            }
+        }
+    })
+
+    
+}
+
+async function getCommentPost(body){
+    return await database.ref('comment/'+body.id_post).get().then((res)=>{
+        var data = res.val()
+        if(data == null){     //ถ้า ไม่มีคอมเมนต์ในโพสต์
+            return null
+        }else{
+            var buffer = []
+            for (let key in data){
+                console.log(key)
+                buffer.push(data[key])
+            }
+            return buffer
+        }
+    })
+}
+function CommentPost(body){
+    database.ref('comment/'+body.id_post).push({
+        ID_userComment :body.ID_userComment,
+        name : body.name,
+        image_profile : body.image_profile ,
+        message : body.message
+    }).then((res)=>{
+        console.log(res)
+    })
+}
+
+
 function sleep(ms) {
     return new Promise((resolve) => {
       setTimeout(resolve, ms);
     });
   }  
+
+
 
 function firebaseRegister(ID,body) {
     database.ref('users/' + ID).set({
