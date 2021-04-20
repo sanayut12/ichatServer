@@ -100,7 +100,6 @@ app.post('/confirmfriend',async function(req,res){
     res.send(true);
 });
 
-
 app.post('/unwait',async function(req,res){
     var body = {
         ID_friend : req.body.ID_friend,
@@ -230,6 +229,48 @@ app.post('/love',async (req,res)=>{
     res.send(data)
 })
 
+app.post('/getlove',async (req,res)=>{
+    var body = {
+        ID : req.body.ID,
+        id_post : req.body.id_post 
+    }
+    console.log('------love post------')
+    console.log(body)
+    var data = await getlovepost(body)
+    // console.log(data)
+    res.send(data)
+})
+
+app.post('/get_post_me',async (req,res)=>{
+    var body = {
+        ID : req.body.ID
+    }
+    // console.log('--------------------------get post me ------------------')
+    // console.log(body)
+
+    var list = await getPostMe(body)
+    var data = await sortFeed(list)
+    // console.log(data)
+
+    // for (let i in data){
+    //     console.log(new Date(data[i]['date']) )
+    // }
+    res.send(data)
+})
+
+app.post('/firendInteractive',async (req,res)=>{
+    var body = {
+        ID : req.body.ID
+    }
+    // console.log(body)
+
+    var data = await firebaseCheckFriend(body.ID)
+    console.log(data)
+    res.send({
+        message : "hello PP"
+    })
+})
+
 // friendOperator(ID_friend,status)
 app.listen(port,()=>{
 console.log("http://localhost:"+port);
@@ -251,6 +292,33 @@ function randomID(){
     
 
     return String(r0)+String(r1)+String(r2)+String(r3)+String(r4)+String(r5)+String(r6)+String(r7)+String(r8)+String(r9);
+}
+
+async function getPostMe(body){
+    var buffer = []
+    await database.ref('/post/'+body.ID).get().then((res)=>{
+        var buffer2 = []
+        var data2 = res.val()
+        if (data2 == null){
+            return null
+        }else{
+            // console.log(data2)
+            delete data2['9999999999']
+            for (let k in data2){
+                data2[k]['ID_post'] = k
+                buffer2.push(data2[k])
+            }
+            
+            for (let item of buffer2){
+                buffer.push(item)
+            }
+        }
+        
+        
+    })
+    // console.log(buffer)
+
+    return buffer;
 }
 
 async function lovepost(body){
@@ -306,6 +374,52 @@ async function lovepost(body){
 
     
 }
+async function getlovepost(body){
+    return database.ref('lovePost/'+body.id_post).get().then( (res)=>{
+        
+        let data  = res.val()
+        // console.log(data)
+        
+        if (data == null){
+            return {
+                count : 0,
+                userlove : false
+            }
+        } else{
+            var loveCount = Object.keys(data).length
+            var check = false
+            var index = "dd"
+            for (let i in data){
+                console.log(i)
+                console.log(data[i])
+                if (data[i]['ID']==body.ID){
+                    check = true
+                    index = i
+                }
+            }
+            console.log(loveCount)
+            console.log(check)
+            console.log(index)
+
+            if (check){
+                return {
+                    count : loveCount,
+                    userlove : true
+                }
+            }else{
+                return {
+                    count : loveCount,
+                    userlove : false
+                }
+            }
+
+            
+        }
+        // return "hell0"
+    })
+
+    
+}
 
 async function getCommentPost(body){
     return await database.ref('comment/'+body.id_post).get().then((res)=>{
@@ -340,8 +454,6 @@ function sleep(ms) {
     });
   }  
 
-
-
 function firebaseRegister(ID,body) {
     database.ref('users/' + ID).set({
         uid : body.uid,
@@ -361,13 +473,13 @@ function firebaseRegister(ID,body) {
 }
 function sortFeed(list){
     var len = list.length
-    console.log(" sort function :"+len)
+    // console.log(" sort function :"+len)
     for (let i = 0;i<len-1;i++){
-        console.log("i : " +i)
+        // console.log("i : " +i)
         for (let k = 0;k<len-1;k++){
-            console.log("K" + k)
+            // console.log("K" + k)
             if (list[k]["date"] < list[k+1]["date"]){
-                console.log( list[k]["date"] +" : "+list[k+1]["date"])
+                // console.log( list[k]["date"] +" : "+list[k+1]["date"])
                 var buff = list[k] 
                 list[k] = list[k+1]
                 list[k+1] = buff
@@ -505,7 +617,6 @@ async function firebaseAddfriend(ID,body){
 }
 
 async function firebaseFriend(ID_user){
-
 }
 
 async function firebaseSearch(ID_user){
@@ -596,6 +707,8 @@ async function friendMe(ID){
     });
     return friend;
 }
+
+
 async function feedFriend(list){
     var buffer = []
 
