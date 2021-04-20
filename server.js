@@ -223,11 +223,11 @@ app.post('/love',async (req,res)=>{
         ID : req.body.ID,
         id_post : req.body.id_post 
     }
-
+    console.log('------love------')
+    console.log(body)
     var data = await lovepost(body)
-    res.send({
-        status : data
-    })
+    // console.log(data)
+    res.send(data)
 })
 
 // friendOperator(ID_friend,status)
@@ -254,22 +254,54 @@ function randomID(){
 }
 
 async function lovepost(body){
-    database.ref('lovePost/'+body.id_post).get().then((res)=>{
+    return database.ref('lovePost/'+body.id_post).get().then( (res)=>{
+        
         let data  = res.val()
-        var loveCount = data.length
+        // console.log(data)
+        
         if (data == null){
             database.ref('lovePost/'+body.id_post).push({
                 ID : body.ID
             })
-            return loveCount
+            return {
+                count : 1,
+                userlove : true
+            }
         } else{
+            var loveCount = Object.keys(data).length
+            var check = false
+            var index = "dd"
             for (let i in data){
-                if (data[i]==body.ID){
-                    database.ref('lovePost/'+body.id_post+'/'+i).remove()
-                    return loveCount-1
+                console.log(i)
+                console.log(data[i])
+                if (data[i]['ID']==body.ID){
+                    check = true
+                    index = i
                 }
             }
+            console.log(loveCount)
+            console.log(check)
+            console.log(index)
+
+            if (check){
+                database.ref('lovePost/'+body.id_post+'/'+index).remove()
+                return {
+                    count : loveCount-1,
+                    userlove : false
+                }
+            }else{
+                database.ref('lovePost/'+body.id_post).push({
+                    ID : body.ID
+                })
+                return {
+                    count : loveCount+1,
+                    userlove : true
+                }
+            }
+
+            
         }
+        // return "hell0"
     })
 
     
