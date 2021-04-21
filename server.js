@@ -115,13 +115,20 @@ app.post('/friendMe',async function(req,res){
     var body = {
         ID : req.body.ID
     };
-    console.log(body);
-    var list_friend = await friendMe(body.ID);
-
-    console.log("list friend"+list_friend)
-    var friend =await friendMeInfo(list_friend);
+    // console.log(body);
+    console.log('----------dddd--------------------')
+    var list_friend= await friendMe2(body.ID);
+    // console.log(key)
+    // console.log(list_friend)
+    // console.log("list friend"+list_friend)
+    var friend =await friendMeInfo(list_friend['friendID']);
+    for (let i in friend){
+        friend[i]['key_friend'] = list_friend['friendKey'][i]
+    }
     res.send(friend);
     ///
+
+    // res.send(null)
 });
 
 app.post('/postFeed',async function(req,res){
@@ -278,6 +285,20 @@ app.post('/getUserInteractive',async (req,res)=>{
     res.send(data) 
 })
 
+app.post('/getMessage',async (req,res)=>{
+
+    var body = {
+        ID_friend : req.body.ID_friend
+    }
+    console.log(body)
+    var list_message =  await getMessageChat(body.ID_friend)
+    console.log(list_message)
+    res.send({
+        list : list_message
+    })
+})
+
+
 // friendOperator(ID_friend,status)
 app.listen(port,()=>{
 console.log("http://localhost:"+port);
@@ -299,6 +320,22 @@ function randomID(){
     
 
     return String(r0)+String(r1)+String(r2)+String(r3)+String(r4)+String(r5)+String(r6)+String(r7)+String(r8)+String(r9);
+}
+
+async function getMessageChat(ID_friend){
+    var message_list  = await database.ref('message/'+ID_friend).get().then((res)=>{
+        var buffer = []
+        var data = res.val()
+        console.log(data)
+        for (let i in data){
+            // console.log(i)
+            buffer.push(data[i])
+        }
+
+        return buffer
+    })
+
+    return message_list
 }
 
 async function findfriendRequest(list){
@@ -786,6 +823,28 @@ async function friendMe(ID){
             }
         }
         return buffer;
+    });
+    return friend;
+}
+async function friendMe2(ID){
+    var friend = await database.ref('/friend').get().then((result)=>{
+        var data = result.val();
+        var buffer = [];
+        var bufferkey = []
+        for (let key in data){
+            if (data[key].ID_user1 == ID & data[key].status == 'friend'){
+                buffer.push(data[key].ID_user2);
+                bufferkey.push(key)
+            }
+            if (data[key].ID_user2 == ID & data[key].status == 'friend'){
+                buffer.push(data[key].ID_user1);
+                bufferkey.push(key)
+            }
+        }
+        return {
+            friendID : buffer,
+            friendKey : bufferkey
+        };
     });
     return friend;
 }
