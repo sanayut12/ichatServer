@@ -263,12 +263,19 @@ app.post('/firendInteractive',async (req,res)=>{
         ID : req.body.ID
     }
     // console.log(body)
+    var data = await deleteNofriend(body.ID)// firebaseCheckFriend()
+    // console.log(data)
+    res.send(data)
+})
 
-    var data = await firebaseCheckFriend(body.ID)
-    console.log(data)
-    res.send({
-        message : "hello PP"
-    })
+app.post('/getUserInteractive',async (req,res)=>{
+    var body = {
+        ID : req.body.ID
+    } 
+    var list = await  findfriendRequestID(body.ID)//หาคนที่เราแอด กับคนที่add เรา
+    var data = await findfriendRequest(list)
+    // console.log(data)
+    res.send(data) 
 })
 
 // friendOperator(ID_friend,status)
@@ -292,6 +299,81 @@ function randomID(){
     
 
     return String(r0)+String(r1)+String(r2)+String(r3)+String(r4)+String(r5)+String(r6)+String(r7)+String(r8)+String(r9);
+}
+
+async function findfriendRequest(list){
+    // console.log(list)
+    var bufferReq = await friendMeInfo(list['userReq'])
+    var bufferRes = await friendMeInfo(list['userRes'])
+    for (let i in bufferReq){
+        // console.log(i)
+        bufferReq[i]["ID_post"] = list['keyReq'][i]
+    }
+    for (let i in bufferRes){
+        // console.log(i)
+        bufferRes[i]["ID_post"] = list['keyRes'][i]
+    }
+    
+    return {
+        userReq : bufferReq,
+        userRes : bufferRes
+    }
+}
+
+async function findfriendRequestID(ID){
+    var buffer = await database.ref('/friend').get().then((result) => {
+        var bufferReq =[];
+        var bufferRes =[];
+        var bufferReqKey = []
+        var bufferResKey = []
+        var data = result.val();
+        if (data == null){
+            return null
+        }else{
+            for (let key in data){
+                //เช็ค id แรก(1) ว่ามีใคร สถานะ wait ไหม
+                if(data[key].ID_user1 == ID && data[key].status == 'wait'){
+                    bufferReq.push(data[key].ID_user2)
+                    bufferReqKey.push(key)
+                }
+            }
+            for (let key in data){
+                //เช็ค id ที่2 ก็คือมีใครแอดมาไหม
+                if(data[key].ID_user2 == ID && data[key].status == 'wait'){
+                    bufferRes.push(data[key].ID_user1)
+                    bufferResKey.push(key)
+                }
+            }
+        }        
+        return {
+            userReq : bufferReq,
+            userRes : bufferRes,
+            keyReq : bufferReqKey,
+            keyRes : bufferResKey
+        };
+    });
+    return buffer;
+}
+
+async function deleteNofriend(ID){
+    var  buffer = []
+    var data = await firebaseSearch(ID)
+    // console.log(data)
+    for (let item in data){
+        delete data[item]['image']
+        delete data[item]['uid']
+        
+        if (data[item]['status'] == 'unfriend' || data[item]['status'] == 'confirm' || data[item]['status'] == 'wait'){
+            delete data[item]
+        }
+    }
+
+    for (let i in data){
+        data[i]['id_table_friend'] = i
+        delete data[i]['status']
+        buffer.push(data[i])
+    }
+    return buffer
 }
 
 async function getPostMe(body){
@@ -751,11 +833,11 @@ async function feedFriend(list){
 
 async function friendMeInfo(list_firend){
     if (list_firend == null){
-        return []
+        return null
     }
     var buffer = [];
     for(let key of list_firend){
-        console.log(key);
+        // console.log(key);
         var friend = await database.ref('/users/'+key).get().then((res)=>{
             var data = res.val()
             data["ID_user"] = key
